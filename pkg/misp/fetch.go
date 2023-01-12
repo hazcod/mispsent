@@ -51,7 +51,7 @@ type Response struct {
 	} `json:"response"`
 }
 
-func (m *MISP) FetchIndicators(daysToFetch uint32) ([]Attribute, error) {
+func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Attribute, error) {
 	indicators := make([]Attribute, 0)
 
 	if daysToFetch == 0 {
@@ -158,6 +158,20 @@ func (m *MISP) FetchIndicators(daysToFetch uint32) ([]Attribute, error) {
 		}
 
 		for _, attribute := range response.Response.Attribute {
+
+			allowedType := false
+			for _, t := range typesToFetch {
+				if strings.EqualFold(t, attribute.Type) {
+					allowedType = true
+					break
+				}
+			}
+
+			if !allowedType {
+				m.logger.WithField("type", attribute.Type).Debug("skipping attribute because of type")
+				continue
+			}
+
 			if m.logger.IsLevelEnabled(logrus.TraceLevel) {
 				b, _ := json.Marshal(&attribute)
 				m.logger.Trace(string(b))

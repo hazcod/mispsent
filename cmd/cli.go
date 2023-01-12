@@ -41,7 +41,7 @@ func main() {
 		logger.WithError(err).Fatal("could not create MISP client")
 	}
 
-	indicators, err := mispClient.FetchIndicators(conf.MISP.DaysToFetch)
+	indicators, err := mispClient.FetchIndicators(conf.MISP.DaysToFetch, conf.MISP.TypesToFetch)
 	if err != nil {
 		logger.WithError(err).Fatal("could not fetch MISP TI indicators")
 	}

@@ -51,7 +51,7 @@ func (s *Sentinel) SubmitThreatIntel(ctx context.Context, l *logrus.Logger, expi
 		attrLogger = attrLogger.WithField("expires", expirationDate.Format("2006-01-02"))
 
 		if expirationDate.Before(today) {
-			attrLogger.WithField("last_seen", attribute.LastSeen.(string)).Warn("skipping expired MISP attribute")
+			attrLogger.WithField("last_seen", attribute.LastSeen.(string)).Debug("skipping expired MISP attribute")
 			continue
 		}
 

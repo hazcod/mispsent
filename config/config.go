@@ -13,15 +13,20 @@ const (
 	defaultExpiresMonths = 6
 )
 
+var (
+	defaultMispTypesToFetch = []string{"ip-dst", "hostname", "domain", "sha256"}
+)
+
 type Config struct {
 	Log struct {
 		Level string `yaml:"level" env:"LOG_LEVEL"`
 	} `yaml:"log"`
 
 	MISP struct {
-		BaseURL     string `yaml:"base_url" env:"MISP_BASE_URL" valid:"url"`
-		AccessKey   string `yaml:"access_key" env:"MISP_ACCESS_KEY" valid:"minstringlength(3)"`
-		DaysToFetch uint32 `yaml:"days_to_fetch" env:"MISP_DAYS_TO_FETCH"`
+		BaseURL      string   `yaml:"base_url" env:"MISP_BASE_URL" valid:"url"`
+		AccessKey    string   `yaml:"access_key" env:"MISP_ACCESS_KEY" valid:"minstringlength(3)"`
+		DaysToFetch  uint32   `yaml:"days_to_fetch" env:"MISP_DAYS_TO_FETCH"`
+		TypesToFetch []string `yaml:"types_to_fetch" env:"MISP_TYPES_FETCH"`
 	} `yaml:"misp"`
 
 	Microsoft struct {
@@ -42,6 +47,10 @@ func (c *Config) Validate() error {
 
 	if c.Microsoft.ExpiresMonths == 0 {
 		c.Microsoft.ExpiresMonths = defaultExpiresMonths
+	}
+
+	if len(c.MISP.TypesToFetch) == 0 {
+		c.MISP.TypesToFetch = defaultMispTypesToFetch
 	}
 
 	if valid, err := validator.ValidateStruct(c); !valid || err != nil {
