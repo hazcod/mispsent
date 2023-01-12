@@ -10,7 +10,6 @@ import (
 
 const (
 	defaultLogLevel      = "INFO"
-	defaultCSRegion      = "eu-1"
 	defaultExpiresMonths = 6
 )
 
@@ -34,21 +33,11 @@ type Config struct {
 		WorkspaceName  string `yaml:"workspace_name" env:"MS_TENANT_ID" valid:"minstringlength(3)"`
 		ExpiresMonths  uint16 `yaml:"expires_months" env:"MS_EXPIRES_MONTHS"`
 	} `yaml:"microsoft"`
-
-	CrowdStrike struct {
-		AccessKey string `yaml:"access_key" env:"CS_ACCESS_KEY" valid:"minstringlength(3)"`
-		SecretKey string `yaml:"secret_key" env:"CS_SECRET_KEY" valid:"minstringlength(3)"`
-		Region    string `yaml:"region" env:"CS_REGION"`
-	} `yaml:"crowdstrike"`
 }
 
 func (c *Config) Validate() error {
 	if c.Log.Level == "" {
 		c.Log.Level = defaultLogLevel
-	}
-
-	if c.CrowdStrike.Region == "" {
-		c.CrowdStrike.Region = defaultCSRegion
 	}
 
 	if c.Microsoft.ExpiresMonths == 0 {

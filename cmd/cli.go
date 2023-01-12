@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"github.com/hazcod/crowdstrike2sentinel/config"
-	"github.com/hazcod/crowdstrike2sentinel/pkg/crowdstrike"
 	"github.com/hazcod/crowdstrike2sentinel/pkg/misp"
 	"github.com/hazcod/crowdstrike2sentinel/pkg/sentinel"
 	"github.com/sirupsen/logrus"
@@ -45,12 +44,6 @@ func main() {
 	indicators, err := mispClient.FetchIndicators(conf.MISP.DaysToFetch)
 	if err != nil {
 		logger.WithError(err).Fatal("could not fetch MISP TI indicators")
-	}
-
-	_, err = crowdstrike.RetrieveSpotlight(
-		ctx, logger, conf.CrowdStrike.AccessKey, conf.CrowdStrike.SecretKey, conf.CrowdStrike.Region)
-	if err != nil {
-		logger.WithError(err).Fatal("could not retrieve CrowdStrike findings")
 	}
 
 	sen, err := sentinel.New(sentinel.Credentials{
