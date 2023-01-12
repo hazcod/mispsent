@@ -1,0 +1,82 @@
+package config
+
+import (
+	"fmt"
+	validator "github.com/asaskevich/govalidator"
+	"github.com/kelseyhightower/envconfig"
+	"gopkg.in/yaml.v3"
+	"os"
+)
+
+const (
+	defaultLogLevel      = "INFO"
+	defaultCSRegion      = "eu-1"
+	defaultExpiresMonths = 6
+)
+
+type Config struct {
+	Log struct {
+		Level string `yaml:"level" env:"LOG_LEVEL"`
+	} `yaml:"log"`
+
+	MISP struct {
+		BaseURL     string `yaml:"base_url" env:"MISP_BASE_URL" valid:"url"`
+		AccessKey   string `yaml:"access_key" env:"MISP_ACCESS_KEY" valid:"minstringlength(3)"`
+		DaysToFetch uint32 `yaml:"days_to_fetch" env:"MISP_DAYS_TO_FETCH"`
+	} `yaml:"misp"`
+
+	Microsoft struct {
+		AppID          string `yaml:"app_id" env:"MS_APP_ID" valid:"minstringlength(3)"`
+		SecretKey      string `yaml:"secret_key" env:"MS_SECRET_KEY" valid:"minstringlength(3)"`
+		TenantID       string `yaml:"tenant_id" env:"MS_TENANT_ID" valid:"minstringlength(3)"`
+		SubscriptionID string `yaml:"subscription_id" env:"MS_TENANT_ID" valid:"minstringlength(3)"`
+		ResourceGroup  string `yaml:"resource_group" env:"MS_TENANT_ID" valid:"minstringlength(3)"`
+		WorkspaceName  string `yaml:"workspace_name" env:"MS_TENANT_ID" valid:"minstringlength(3)"`
+		ExpiresMonths  uint16 `yaml:"expires_months" env:"MS_EXPIRES_MONTHS"`
+	} `yaml:"microsoft"`
+
+	CrowdStrike struct {
+		AccessKey string `yaml:"access_key" env:"CS_ACCESS_KEY" valid:"minstringlength(3)"`
+		SecretKey string `yaml:"secret_key" env:"CS_SECRET_KEY" valid:"minstringlength(3)"`
+		Region    string `yaml:"region" env:"CS_REGION"`
+	} `yaml:"crowdstrike"`
+}
+
+func (c *Config) Validate() error {
+	if c.Log.Level == "" {
+		c.Log.Level = defaultLogLevel
+	}
+
+	if c.CrowdStrike.Region == "" {
+		c.CrowdStrike.Region = defaultCSRegion
+	}
+
+	if c.Microsoft.ExpiresMonths == 0 {
+		c.Microsoft.ExpiresMonths = defaultExpiresMonths
+	}
+
+	if valid, err := validator.ValidateStruct(c); !valid || err != nil {
+		return fmt.Errorf("invalid configuration: %v", err)
+	}
+
+	return nil
+}
+
+func (c *Config) Load(path string) error {
+	if path != "" {
+		configBytes, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to load configuration file at '%s': %v", path, err)
+		}
+
+		if err = yaml.Unmarshal(configBytes, c); err != nil {
+			return fmt.Errorf("failed to parse configuration: %v", err)
+		}
+	}
+
+	if err := envconfig.Process("", c); err != nil {
+		return fmt.Errorf("could not load environment: %v", err)
+	}
+
+	return nil
+}
