@@ -1,4 +1,4 @@
-*.yml
-*.yaml
+/*.yml
+/*.yaml
 **/.DS_Store
 **/.idea/
