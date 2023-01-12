@@ -22,6 +22,7 @@ microsoft:
   subscription_id: "XXX"
   resource_group: "XXX"
   workspace_name: "XXX"
+  expires_months: 6
 ```
 
 ## Building
