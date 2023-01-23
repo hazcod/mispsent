@@ -41,10 +41,7 @@ func main() {
 		logger.WithError(err).Fatal("could not create MISP client")
 	}
 
-	indicators, err := mispClient.FetchIndicators(conf.MISP.DaysToFetch, conf.MISP.TypesToFetch)
-	if err != nil {
-		logger.WithError(err).Fatal("could not fetch MISP TI indicators")
-	}
+	// ms sentinel
 
 	sen, err := sentinel.New(sentinel.Credentials{
 		TenantID:       conf.Microsoft.TenantID,
@@ -61,6 +58,11 @@ func main() {
 	logger.Info("cleaning up Sentinel TI")
 	if err := sen.CleanupThreatIntel(ctx, logger, 30); err != nil {
 		logger.WithError(err).Fatal("could not send to Sentinelm")
+	}
+
+	indicators, err := mispClient.FetchIndicators(conf.MISP.DaysToFetch, conf.MISP.TypesToFetch)
+	if err != nil {
+		logger.WithError(err).Fatal("could not fetch MISP TI indicators")
 	}
 
 	mispHostname := conf.MISP.BaseURL

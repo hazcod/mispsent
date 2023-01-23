@@ -23,12 +23,13 @@ func (s *Sentinel) CleanupThreatIntel(ctx context.Context, l *logrus.Logger, ret
 		return fmt.Errorf("could not create TI client: %v", err)
 	}
 
-	tomorrow := time.Now().AddDate(0, 0, 1)
+	tomorrow := time.Now().AddDate(0, 0, -1)
 
 	logger.Info("retrieving expired TI indicators")
 	pager := tiClient.NewQueryIndicatorsPager(s.creds.ResourceGroup, s.creds.WorkspaceName, insights.ThreatIntelligenceFilteringCriteria{
 		IncludeDisabled: to.Ptr(true),
 		MaxValidUntil:   to.Ptr(tomorrow.Format(time.RFC3339)),
+		PageSize:        to.Ptr[int32](1000),
 	}, nil)
 
 	totalDeleted := 0

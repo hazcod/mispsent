@@ -9,8 +9,36 @@ import (
 	"github.com/hazcod/crowdstrike2sentinel/pkg/misp"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 	"time"
 )
+
+const (
+	threatTypeFile    = "file"
+	threatTypeNetwork = "network-traffic"
+	threatTypeURL     = "url"
+	threatTypeEmail   = "email-addr"
+	threatTypeDomain  = "domain-name"
+)
+
+func getThreatType(patternType string) string {
+	patternType = strings.ToLower(patternType)
+
+	switch patternType {
+	case "ip-dst":
+		return threatTypeNetwork
+	case "vhash":
+		return threatTypeFile
+	case "filename":
+		return threatTypeFile
+	case "sha256":
+		return threatTypeFile
+	case "attachment":
+		return threatTypeEmail
+	default:
+		return "Other"
+	}
+}
 
 func (s *Sentinel) SubmitThreatIntel(ctx context.Context, l *logrus.Logger, expireMonths uint16, mispHostname string, attributes []misp.Attribute) error {
 	logger := l.WithField("module", "sentinel_ti")
@@ -27,6 +55,8 @@ func (s *Sentinel) SubmitThreatIntel(ctx context.Context, l *logrus.Logger, expi
 
 	today := time.Now()
 	defaultExpiration := time.Now().AddDate(0, int(expireMonths), 0)
+
+	numCreated := 0
 
 	for _, attribute := range attributes {
 		attrLogger := logger.WithField("attr_id", attribute.ID)
@@ -51,7 +81,9 @@ func (s *Sentinel) SubmitThreatIntel(ctx context.Context, l *logrus.Logger, expi
 		attrLogger = attrLogger.WithField("expires", expirationDate.Format("2006-01-02"))
 
 		if expirationDate.Before(today) {
-			attrLogger.WithField("last_seen", attribute.LastSeen.(string)).Debug("skipping expired MISP attribute")
+			attrLogger.WithField("last_seen", attribute.LastSeen.(string)).
+				WithField("last_seen_raw", attribute.LastSeen.(string)).
+				Debug("skipping expired MISP attribute")
 			continue
 		}
 
@@ -62,6 +94,8 @@ func (s *Sentinel) SubmitThreatIntel(ctx context.Context, l *logrus.Logger, expi
 			attrLogger.Info("skipping pre-existing attribute")
 			continue
 		}
+
+		threatType := getThreatType(attribute.Type)
 
 		if _, err = tiClient.CreateIndicator(ctx, s.creds.ResourceGroup, s.creds.WorkspaceName, insights.ThreatIntelligenceIndicatorModel{
 			Kind: nil,
@@ -95,21 +129,25 @@ func (s *Sentinel) SubmitThreatIntel(ctx context.Context, l *logrus.Logger, expi
 				PatternType:            to.Ptr[string](attribute.Type),
 				PatternVersion:         nil,
 				Revoked:                to.Ptr[bool](attribute.Deleted),
-				Source:                 to.Ptr[string]("misp.cert.be"),
+				Source:                 to.Ptr[string](mispHostname),
 				ThreatIntelligenceTags: nil,
-				ThreatTypes:            nil,
+				ThreatTypes:            []*string{to.Ptr(threatType)},
 				ValidFrom:              to.Ptr[string](timestamp.Format(time.RFC3339)),
 				ValidUntil:             to.Ptr[string](expirationDate.Format(time.RFC3339)),
-				AdditionalData:         nil,
-				FriendlyName:           nil,
 			},
 		}, nil); err != nil {
 			attrLogger.WithError(err).Error("could not create attribute")
 			return fmt.Errorf("could not create attribute %s: %v", attribute.ID, err)
 		}
 
+		numCreated += 1
+
 		attrLogger.WithField("expires", expirationDate.Format("2006-01-02")).
 			Info("created attribute in Sentinel")
+	}
+
+	if numCreated > 0 {
+		logger.WithField("num", numCreated).Info("successfully pushed TI attributes into Sentinel")
 	}
 
 	return nil
