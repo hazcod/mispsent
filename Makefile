@@ -2,10 +2,12 @@
 all: run
 
 build:
-	go build -o mispsent ./cmd/...
+	$$GOPATH/bin/goreleaser build --snapshot --config=.github/goreleaser.yml --rm-dist
 
 run:
 	go run ./cmd/... -config=dev.yml
 
+clean:
+	rm -r dist/ || true
 test:
 	go test -v ./...
