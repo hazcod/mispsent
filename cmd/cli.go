@@ -13,7 +13,6 @@ import (
 func main() {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
-
 	ctx := context.Background()
 
 	confFile := flag.String("config", "", "The YAML configuration file.")
