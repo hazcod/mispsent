@@ -4,7 +4,7 @@ A tool that exports threat intelligence indicators from MISP and pushes these in
 
 ## Configuration
 
-Create a YAML configuration file with the configuration, or specify environment variables:
+Create a YAML configuration file with the required configuration, or specify environment variables:
 
 ```yaml
 log:
