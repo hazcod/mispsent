@@ -72,7 +72,7 @@ func (c *Config) Load(path string) error {
 		}
 	}
 
-	if err := envconfig.Process("", c); err != nil {
+	if err := envconfig.Process("TI", c); err != nil {
 		return fmt.Errorf("could not load environment: %v", err)
 	}
 
