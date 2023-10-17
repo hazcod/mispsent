@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	conf := config.Config{}
-	if err := conf.Load(*confFile); err != nil {
+	if err := conf.Load(logger, *confFile); err != nil {
 		logger.WithError(err).WithField("config", *confFile).Fatal("failed to load configuration")
 	}
 

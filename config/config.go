@@ -4,6 +4,7 @@ import (
 	"fmt"
 	validator "github.com/asaskevich/govalidator"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"os"
 )
@@ -23,20 +24,20 @@ type Config struct {
 	} `yaml:"log"`
 
 	MISP struct {
-		BaseURL      string   `yaml:"base_url" env:"MISP_BASE_URL" valid:"url"`
-		AccessKey    string   `yaml:"access_key" env:"MISP_ACCESS_KEY" valid:"minstringlength(3)"`
-		DaysToFetch  uint32   `yaml:"days_to_fetch" env:"MISP_DAYS_TO_FETCH"`
-		TypesToFetch []string `yaml:"types_to_fetch" env:"MISP_TYPES_FETCH"`
+		BaseURL      string   `yaml:"base_url" envconfig:"MISP_BASE_URL" valid:"url"`
+		AccessKey    string   `yaml:"access_key" envconfig:"MISP_ACCESS_KEY" valid:"minstringlength(3)"`
+		DaysToFetch  uint32   `yaml:"days_to_fetch" envconfig:"MISP_DAYS_TO_FETCH"`
+		TypesToFetch []string `yaml:"types_to_fetch" envconfig:"MISP_TYPES_FETCH"`
 	} `yaml:"misp"`
 
 	Sentinel struct {
-		AppID          string `yaml:"app_id" env:"MS_APP_ID" valid:"minstringlength(3)"`
-		SecretKey      string `yaml:"secret_key" env:"MS_SECRET_KEY" valid:"minstringlength(3)"`
-		TenantID       string `yaml:"tenant_id" env:"MS_TENANT_ID" valid:"minstringlength(3)"`
-		SubscriptionID string `yaml:"subscription_id" env:"MS_SUB_ID" valid:"minstringlength(3)"`
-		ResourceGroup  string `yaml:"resource_group" env:"MS_RES_GROUP" valid:"minstringlength(3)"`
-		WorkspaceName  string `yaml:"workspace_name" env:"MS_WS_NAME" valid:"minstringlength(3)"`
-		ExpiresMonths  int    `yaml:"expires_months" env:"MS_EXPIRES_MONTHS"`
+		AppID          string `yaml:"app_id" envconfig:"MS_APP_ID" valid:"minstringlength(3)"`
+		SecretKey      string `yaml:"secret_key" envconfig:"MS_SECRET_KEY" valid:"minstringlength(3)"`
+		TenantID       string `yaml:"tenant_id" envconfig:"MS_TENANT_ID" valid:"minstringlength(3)"`
+		SubscriptionID string `yaml:"subscription_id" envconfig:"MS_SUB_ID" valid:"minstringlength(3)"`
+		ResourceGroup  string `yaml:"resource_group" envconfig:"MS_RES_GROUP" valid:"minstringlength(3)"`
+		WorkspaceName  string `yaml:"workspace_name" envconfig:"MS_WS_NAME" valid:"minstringlength(3)"`
+		ExpiresMonths  int    `yaml:"expires_months" envconfig:"MS_EXPIRES_MONTHS"`
 	} `yaml:"mssentinel"`
 }
 
@@ -53,6 +54,10 @@ func (c *Config) Validate() error {
 		c.MISP.TypesToFetch = defaultMispTypesToFetch
 	}
 
+	if c.MISP.BaseURL == "" {
+		return fmt.Errorf("no MISP base url provided")
+	}
+
 	if valid, err := validator.ValidateStruct(c); !valid || err != nil {
 		return fmt.Errorf("invalid configuration: %v", err)
 	}
@@ -60,8 +65,10 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (c *Config) Load(path string) error {
+func (c *Config) Load(l *logrus.Logger, path string) error {
 	if path != "" {
+		l.WithField("config", path).Info("loading configuration file")
+
 		configBytes, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to load configuration file at '%s': %v", path, err)

@@ -58,7 +58,7 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 		return nil, errors.New("cannot fetch 0 days")
 	}
 
-	httpClient := http.Client{Timeout: time.Minute * 5}
+	httpClient := http.Client{Timeout: time.Minute * 10}
 
 	url := strings.TrimSuffix(m.baseURL, "/") + "/attributes/restSearch"
 	fromTime := time.Now().AddDate(0, 0, -1*int(daysToFetch))
@@ -126,11 +126,6 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 			return nil, fmt.Errorf("could not request: %v", err)
 		}
 
-		if resp.StatusCode > 399 {
-			_ = resp.Body.Close()
-			return nil, fmt.Errorf("invalid response code: %d", resp.StatusCode)
-		}
-
 		m.logger.Debug("got misp response")
 
 		respBytes, err := io.ReadAll(resp.Body)
@@ -140,6 +135,11 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 		}
 
 		_ = resp.Body.Close()
+
+		if resp.StatusCode > 399 {
+			m.logger.Debugf("%s", string(respBytes))
+			return nil, fmt.Errorf("invalid response code: %d", resp.StatusCode)
+		}
 
 		var response Response
 		if err := json.Unmarshal(respBytes, &response); err != nil {
