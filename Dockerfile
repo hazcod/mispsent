@@ -1,4 +1,4 @@
-FROM alpine:3.18 AS base
+FROM alpine:3.19 AS base
 
 # add ca certificates and timezone data files
 # hadolint ignore=DL3018
