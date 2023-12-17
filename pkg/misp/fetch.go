@@ -58,7 +58,7 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 		return nil, errors.New("cannot fetch 0 days")
 	}
 
-	httpClient := http.Client{Timeout: time.Minute * 10}
+	httpClient := http.Client{Timeout: time.Minute * 15}
 
 	url := strings.TrimSuffix(m.baseURL, "/") + "/attributes/restSearch"
 	fromTime := time.Now().AddDate(0, 0, -1*int(daysToFetch))
