@@ -15,6 +15,7 @@ import (
 
 const (
 	mispMaxAttributesPerFetch = 100
+	mispMaxFailures           = 5
 )
 
 type Attribute struct {
@@ -67,6 +68,7 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 	page := int32(0)
 	limit := mispMaxAttributesPerFetch
 	submitted := 0
+	mispFailures := 0
 
 	for {
 		body := struct {
@@ -121,6 +123,7 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 			WithField("from", fromTimeStr).
 			Debug("fetching MISP indicators")
 
+	retry:
 		resp, err := httpClient.Do(httpRequest)
 		if err != nil {
 			return nil, fmt.Errorf("could not request: %v", err)
@@ -138,8 +141,22 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 
 		if resp.StatusCode > 399 {
 			m.logger.Debugf("%s", string(respBytes))
-			return nil, fmt.Errorf("invalid response code: %d", resp.StatusCode)
+
+			mispFailures += 1
+
+			// sometimes MISP will return errors, so retry up to X times
+			if mispFailures <= mispMaxFailures {
+				m.logger.WithField("status_code", resp.StatusCode).Error("MISP failed response, retrying in 3 sec")
+				time.Sleep(time.Second * 3)
+				goto retry
+			}
+
+			// if all else fails, stop the program
+			return nil, fmt.Errorf("invalid response code: %d (tries %d/%d)", resp.StatusCode, mispFailures, mispMaxFailures)
 		}
+
+		// reset failure count back to zero if one call succeeds
+		mispFailures = 0
 
 		var response Response
 		if err := json.Unmarshal(respBytes, &response); err != nil {
