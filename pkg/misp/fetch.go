@@ -126,6 +126,19 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 	retry:
 		resp, err := httpClient.Do(httpRequest)
 		if err != nil {
+			m.logger.Errorf("could not request: %v", err)
+
+			mispFailures += 1
+
+			// sometimes MISP will return errors, so retry up to X times
+			if mispFailures <= mispMaxFailures {
+				m.logger.WithField("status_code", resp.StatusCode).
+					WithField("tries", mispFailures).WithField("max_tries", mispMaxFailures).
+					Error("MISP failed response, retrying in 3 sec")
+				time.Sleep(time.Second * 3)
+				goto retry
+			}
+
 			return nil, fmt.Errorf("could not request: %v", err)
 		}
 
@@ -146,7 +159,9 @@ func (m *MISP) FetchIndicators(daysToFetch uint32, typesToFetch []string) ([]Att
 
 			// sometimes MISP will return errors, so retry up to X times
 			if mispFailures <= mispMaxFailures {
-				m.logger.WithField("status_code", resp.StatusCode).Error("MISP failed response, retrying in 3 sec")
+				m.logger.WithField("status_code", resp.StatusCode).
+					WithField("tries", mispFailures).WithField("max_tries", mispMaxFailures).
+					Error("MISP failed response, retrying in 3 sec")
 				time.Sleep(time.Second * 3)
 				goto retry
 			}
