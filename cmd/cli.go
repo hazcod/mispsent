@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/hazcod/crowdstrike2sentinel/config"
 	"github.com/hazcod/crowdstrike2sentinel/pkg/misp"
 	"github.com/hazcod/crowdstrike2sentinel/pkg/sentinel"
 	"github.com/sirupsen/logrus"
 	"net/url"
+	"sync"
 )
 
 func main() {
@@ -65,29 +67,55 @@ func main() {
 		logger.WithError(err).Fatal("could not create sentinel instance")
 	}
 
-	if conf.Sentinel.ExpiresMonths > 0 {
-		logger.WithField("expires_months", conf.Sentinel.ExpiresMonths).Info("cleaning up Sentinel TI")
+	// ---
 
-		if err := sen.CleanupThreatIntel(ctx, logger, 30); err != nil {
-			logger.WithError(err).Fatal("could not send to Sentinelm")
+	taskWg := sync.WaitGroup{}
+	errorChann := make(chan error)
+
+	taskWg.Add(1)
+	go func() {
+		logger.Info("cleaning up Sentinel TI")
+
+		if err := sen.CleanupThreatIntel(ctx, logger); err != nil {
+			errorChann <- fmt.Errorf("could not clean up threat intel: %w", err)
 		}
-	} else {
-		logger.Info("skipping TI cleanup since expires_month is set to 0")
-	}
+
+		taskWg.Done()
+	}()
 
 	// fetch TI indicator from MISP
 
-	logger.Info("fetching indicators from MISP")
-	indicators, err := mispClient.FetchIndicators(conf.MISP.DaysToFetch, conf.MISP.TypesToFetch)
-	if err != nil {
-		logger.WithError(err).Fatal("could not fetch MISP TI indicators")
-	}
+	taskWg.Add(1)
+	go func() {
+		logger.Info("fetching indicators from MISP")
+		indicators, err := mispClient.FetchIndicators(conf.MISP.DaysToFetch, conf.MISP.TypesToFetch)
+		if err != nil {
+			errorChann <- fmt.Errorf("could not fetch MISP TI indicators: %w", err)
+		}
 
-	// submit threat intelligence to ms sentinel
+		// submit threat intelligence to ms sentinel
 
-	logger.WithField("total", len(indicators)).Info("submitting MISP indicators to MS Sentinel")
-	if err := sen.SubmitThreatIntel(ctx, logger, uint16(conf.Sentinel.ExpiresMonths), mispHostname, indicators); err != nil {
-		logger.WithError(err).Fatal("failed to submit indicators")
+		logger.WithField("total", len(indicators)).Info("submitting MISP indicators to MS Sentinel")
+		if err := sen.SubmitThreatIntel(ctx, logger, uint16(conf.Sentinel.ExpiresMonths), mispHostname, indicators); err != nil {
+			errorChann <- fmt.Errorf("failed to submit indicators: %w", err)
+		}
+
+		taskWg.Done()
+	}()
+
+	// wait for work to finish
+	doneChan := make(chan struct{})
+	go func() {
+		taskWg.Wait()
+		close(doneChan)
+	}()
+
+	logger.Info("waiting for tasks to finish")
+	select {
+	case err := <-errorChann:
+		logger.WithError(err).Fatal("failed")
+	case <-doneChan:
+		logger.Info("finished tasks")
 	}
 
 	// program finish

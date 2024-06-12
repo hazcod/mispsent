@@ -3,7 +3,7 @@ package sentinel
 import (
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	insights "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/securityinsights/armsecurityinsights/v2"
@@ -15,10 +15,10 @@ import (
 
 const (
 	// fetch TI items to be deleted per this amount
-	sentinelDeletePageSize = 500
+	sentinelDeletePageSize = 5000
 )
 
-func (s *Sentinel) CleanupThreatIntel(ctx context.Context, l *logrus.Logger, retentionDays uint32) error {
+func (s *Sentinel) CleanupThreatIntel(ctx context.Context, l *logrus.Logger) error {
 	logger := l.WithField("module", "sentinel_ti")
 
 	cred, err := azidentity.NewClientSecretCredential(s.creds.TenantID, s.creds.ClientID, s.creds.ClientSecret, nil)
@@ -84,7 +84,7 @@ func (s *Sentinel) CleanupThreatIntel(ctx context.Context, l *logrus.Logger, ret
 				deleteCtx := ctx
 				var rawResponse *http.Response
 				if logger.Logger.IsLevelEnabled(logrus.TraceLevel) {
-					deleteCtx = runtime.WithCaptureResponse(ctx, &rawResponse)
+					deleteCtx = policy.WithCaptureResponse(ctx, &rawResponse)
 				}
 
 				_, err := tiClient.Delete(deleteCtx, s.creds.ResourceGroup, s.creds.WorkspaceName, *ti.Name, nil)
