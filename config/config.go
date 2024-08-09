@@ -38,6 +38,7 @@ type Config struct {
 		ResourceGroup  string `yaml:"resource_group" envconfig:"MS_RES_GROUP" valid:"minstringlength(3)"`
 		WorkspaceName  string `yaml:"workspace_name" envconfig:"MS_WS_NAME" valid:"minstringlength(3)"`
 		ExpiresMonths  int    `yaml:"expires_months" envconfig:"MS_EXPIRES_MONTHS"`
+		SkipDelete     bool   `yaml:"skip_delete" envconfig:"MS_SKIP_DELETE"`
 	} `yaml:"mssentinel"`
 }
 
