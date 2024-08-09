@@ -71,18 +71,18 @@ func main() {
 
 	taskWg := sync.WaitGroup{}
 	errorChann := make(chan error)
+	/*
+		taskWg.Add(1)
+		go func() {
+			logger.Info("cleaning up Sentinel TI")
 
-	taskWg.Add(1)
-	go func() {
-		logger.Info("cleaning up Sentinel TI")
+			if err := sen.CleanupThreatIntel(ctx, logger); err != nil {
+				errorChann <- fmt.Errorf("could not clean up threat intel: %w", err)
+			}
 
-		if err := sen.CleanupThreatIntel(ctx, logger); err != nil {
-			errorChann <- fmt.Errorf("could not clean up threat intel: %w", err)
-		}
-
-		taskWg.Done()
-	}()
-
+			taskWg.Done()
+		}()
+	*/
 	// fetch TI indicator from MISP
 
 	taskWg.Add(1)
